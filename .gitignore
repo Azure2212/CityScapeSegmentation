@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.pt
+*.pth
+data/
+trained_results/
+*.ipynb
+.ipynb_checkpoints/

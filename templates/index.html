@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cityscape Segmentation</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(160deg, #cce9fa 0%, #a8d8f5 40%, #ddf1ff 100%);
+      min-height: 100vh;
+      color: #1a3a5c;
+    }
+
+    header {
+      background: linear-gradient(90deg, #0d5fa0 0%, #1488cc 60%, #22c1e8 100%);
+      color: white;
+      padding: 28px 40px;
+      box-shadow: 0 3px 16px rgba(26, 111, 168, 0.25);
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    header p {
+      margin-top: 6px;
+      font-size: 0.95rem;
+      opacity: 0.88;
+    }
+
+    footer {
+      background: linear-gradient(90deg, #0d5fa0 0%, #1488cc 60%, #22c1e8 100%);
+      color: white;
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      box-shadow: 0 -3px 16px rgba(13, 95, 160, 0.2);
+    }
+
+    main {
+      display: flex;
+      gap: 28px;
+      padding: 36px 40px;
+      align-items: stretch;
+    }
+
+    /* ── Left panel: classes ── */
+    .panel-classes {
+      background: white;
+      border-radius: 16px;
+      padding: 24px 20px;
+      width: 340px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 18px rgba(26, 111, 168, 0.1);
+      border: 1px solid #d0eaf8;
+      overflow-y: auto;
+    }
+
+    .panel-classes h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a6fa8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #7cc8f0;
+    }
+
+    .class-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .class-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      overflow: hidden;
+    }
+
+    .class-item:hover {
+      background: #eaf5fd;
+    }
+
+    .class-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #0d8fd4;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .class-item label {
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+      color: #1a3a5c;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .class-id {
+      display: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #7cc8f0;
+    }
+
+    .btn-small {
+      flex: 1;
+      padding: 7px 0;
+      border: 1.5px solid #0d8fd4;
+      border-radius: 7px;
+      background: white;
+      color: #0d8fd4;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-small:hover {
+      background: #0d8fd4;
+      color: white;
+    }
+
+    /* ── Right panel: image area ── */
+    .panel-image {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .upload-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: white;
+      border-radius: 14px;
+      padding: 18px 24px;
+      box-shadow: 0 2px 18px rgba(26, 111, 168, 0.1);
+      border: 1px solid #d0eaf8;
+    }
+
+    .upload-bar label[for="imageInput"] {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(90deg, #0d8fd4, #22c1e8);
+      color: white;
+      padding: 10px 22px;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .upload-bar label[for="imageInput"]:hover {
+      opacity: 0.88;
+    }
+
+    #imageInput {
+      display: none;
+    }
+
+    #fileName {
+      font-size: 0.88rem;
+      color: #5a8aaa;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-run {
+      padding: 10px 28px;
+      background: linear-gradient(90deg, #07a86a, #1dd68e);
+      color: white;
+      border: none;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-run:hover {
+      opacity: 0.88;
+    }
+
+    /* ── Image frame ── */
+    .image-and-text {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .image-frame {
+      background: #111;
+      border-radius: 16px;
+      box-shadow: 0 2px 18px rgba(26, 111, 168, 0.1);
+      border: 2px dashed #5bb8e8;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.2s;
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .image-frame:hover {
+      border-color: #1a6fa8;
+    }
+
+    .reasoning-panel {
+      flex: 1;
+      position: relative;
+      border: 1.5px solid #d0eaf8;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 2px 18px rgba(26, 111, 168, 0.08);
+      min-height: 420px;
+    }
+
+    .reasoning-panel .legend {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 0 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1a6fa8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .reasoning-panel textarea {
+      width: 100%;
+      min-height: 420px;
+      resize: none;
+      border: none;
+      border-radius: 12px;
+      padding: 20px 16px 14px;
+      font-size: 0.88rem;
+      color: #1a3a5c;
+      font-family: 'Segoe UI', sans-serif;
+      line-height: 1.6;
+      background: #f7fbff;
+      outline: none;
+      box-sizing: border-box;
+      cursor: default;
+    }
+
+    .frame-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: #a0c8e0;
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+    }
+
+    .frame-placeholder svg {
+      width: 72px;
+      height: 72px;
+      opacity: 0.5;
+    }
+
+    .frame-placeholder p {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .frame-placeholder span {
+      font-size: 0.82rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #previewImg {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      display: none;
+      object-fit: contain;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Cityscape Segmentation</h1>
+    <p>Select segmentation classes, upload an image, and run inference.</p>
+  </header>
+
+  <main>
+
+    <!-- Class selector -->
+    <aside class="panel-classes">
+      <h2>Classes</h2>
+      <div class="btn-row" style="margin-top:12px;padding-top:0;border-top:none;">
+        <button class="btn-small" onclick="setAll(true)">All</button>
+        <button class="btn-small" onclick="setAll(false)">None</button>
+      </div>
+      <div class="class-list" style="margin-top:12px;">
+        <div class="class-item"><input type="checkbox" id="cls0" checked /><label for="cls0">Road</label><span class="class-id">00</span></div>
+        <div class="class-item"><input type="checkbox" id="cls1" checked /><label for="cls1">Sidewalk</label><span class="class-id">01</span></div>
+        <div class="class-item"><input type="checkbox" id="cls2" checked /><label for="cls2">Building</label><span class="class-id">02</span></div>
+        <div class="class-item"><input type="checkbox" id="cls3" /><label for="cls3">Wall</label><span class="class-id">03</span></div>
+        <div class="class-item"><input type="checkbox" id="cls4" /><label for="cls4">Fence</label><span class="class-id">04</span></div>
+        <div class="class-item"><input type="checkbox" id="cls5" /><label for="cls5">Pole</label><span class="class-id">05</span></div>
+        <div class="class-item"><input type="checkbox" id="cls6" /><label for="cls6">Traffic Light</label><span class="class-id">06</span></div>
+        <div class="class-item"><input type="checkbox" id="cls7" /><label for="cls7">Traffic Sign</label><span class="class-id">07</span></div>
+        <div class="class-item"><input type="checkbox" id="cls8" checked /><label for="cls8">Vegetation</label><span class="class-id">08</span></div>
+        <div class="class-item"><input type="checkbox" id="cls9" /><label for="cls9">Terrain</label><span class="class-id">09</span></div>
+        <div class="class-item"><input type="checkbox" id="cls10" checked /><label for="cls10">Sky</label><span class="class-id">10</span></div>
+        <div class="class-item"><input type="checkbox" id="cls11" checked /><label for="cls11">Person</label><span class="class-id">11</span></div>
+        <div class="class-item"><input type="checkbox" id="cls12" /><label for="cls12">Rider</label><span class="class-id">12</span></div>
+        <div class="class-item"><input type="checkbox" id="cls13" checked /><label for="cls13">Car</label><span class="class-id">13</span></div>
+        <div class="class-item"><input type="checkbox" id="cls14" /><label for="cls14">Truck</label><span class="class-id">14</span></div>
+        <div class="class-item"><input type="checkbox" id="cls15" /><label for="cls15">Bus</label><span class="class-id">15</span></div>
+        <div class="class-item"><input type="checkbox" id="cls16" /><label for="cls16">Train</label><span class="class-id">16</span></div>
+        <div class="class-item"><input type="checkbox" id="cls17" /><label for="cls17">Motorcycle</label><span class="class-id">17</span></div>
+        <div class="class-item"><input type="checkbox" id="cls18" /><label for="cls18">Bicycle</label><span class="class-id">18</span></div>
+        <div class="class-item"><input type="checkbox" id="cls19" /><label for="cls19">Others</label><span class="class-id">19</span></div>
+      </div>
+    </aside>
+
+    <!-- Image panel -->
+    <section class="panel-image">
+
+      <div class="upload-bar">
+        <label for="imageInput">
+          <!-- upload icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Image
+        </label>
+        <input type="file" id="imageInput" accept="image/*" onchange="handleUpload(event)" />
+        <span id="fileName">No file chosen</span>
+        <select id="modelSelect" style="padding:9px 12px;border:1.5px solid #d0eaf8;border-radius:9px;font-size:0.88rem;color:#1a3a5c;background:white;cursor:pointer;outline:none;">
+          {% for m in models %}
+          <option value="{{ m.key }}" {% if not m.available %}disabled{% endif %}>
+            {{ m.label }}{% if not m.available %} (unavailable){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <button class="btn-run" onclick="runSegmentation()">Run Segmentation</button>
+      </div>
+
+      <div class="image-and-text">
+        <div class="image-frame" id="imageFrame">
+          <div class="frame-placeholder" id="placeholder">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#a0d4f0" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <p>No image loaded</p>
+            <span>Upload an image to get started</span>
+          </div>
+          <img id="previewImg" alt="Uploaded cityscape" />
+          <div id="loadingOverlay" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,0.75);display:none;align-items:center;justify-content:center;border-radius:12px;flex-direction:column;gap:12px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1a6fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+            <span style="color:#1a6fa8;font-weight:600;font-size:0.9rem;">Running segmentation...</span>
+          </div>
+        </div>
+
+        <div class="reasoning-panel">
+<textarea placeholder="Segmentation reasoning will appear here..." readonly></textarea>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer>
+    <span>Anh Tuan Tran</span>
+    <!-- handshake icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+      <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+      <line x1="6" y1="1" x2="6" y2="4"/>
+      <line x1="10" y1="1" x2="10" y2="4"/>
+      <line x1="14" y1="1" x2="14" y2="4"/>
+    </svg>
+    <span>Jared Young</span>
+  </footer>
+
+  <script>
+    let uploadedFile = null;
+
+    function handleUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      uploadedFile = file;
+      document.getElementById('fileName').textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = document.getElementById('previewImg');
+        img.src = ev.target.result;
+        img.style.display = 'block';
+        document.getElementById('placeholder').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function setAll(state) {
+      document.querySelectorAll('.class-list input[type="checkbox"]')
+        .forEach(cb => cb.checked = state);
+    }
+
+    async function runSegmentation() {
+      if (!uploadedFile) {
+        alert('Please upload an image first.');
+        return;
+      }
+
+      // Collect selected class indices
+      const selected = [...document.querySelectorAll('.class-list input[type="checkbox"]')]
+        .map((cb, i) => cb.checked ? i : null)
+        .filter(i => i !== null);
+
+      // Show loading overlay
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.style.display = 'flex';
+
+      // Build form data
+      const form = new FormData();
+      form.append('image', uploadedFile);
+      form.append('model', document.getElementById('modelSelect').value);
+      selected.forEach(i => form.append('classes[]', i));
+
+      try {
+        const res = await fetch('/predict', { method: 'POST', body: form });
+        if (!res.ok) { alert('Server error: ' + res.status); return; }
+        const data = await res.json();
+
+        // Replace image frame with segmentation mask
+        const img = document.getElementById('previewImg');
+        img.src = 'data:image/png;base64,' + data.segmentation_image;
+        img.style.display = 'block';
+        document.getElementById('placeholder').style.display = 'none';
+
+        // Show reasoning in panel
+        const textarea = document.querySelector('.reasoning-panel textarea');
+        textarea.value = data.reasoning;
+
+      } catch (err) {
+        alert('Request failed: ' + err);
+      } finally {
+        overlay.style.display = 'none';
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Web server
+flask
+gunicorn
+
+# Core ML
+torch
+torchvision
+
+# Image processing
+opencv-python
+albumentations
+
+# Data & utilities
+numpy
+pandas
+tqdm
+scipy
+
+# Visualization
+matplotlib
+
+# Model backbones
+timm
+
+# Weight download from Google Drive
+gdown

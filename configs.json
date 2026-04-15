@@ -1,0 +1,16 @@
+{
+    "cityscape_path": "/data/cityscapesegmentation/data",
+    "cls_classes": 19,
+    "image_size": 224,
+    "n_channels": 3,
+    "lr": 0.001,
+    "min_lr": 1e-7,
+    "batch_size": 16,
+    "num_workers": 2,
+    "earlyStopping": 50,
+    "max_epoch_num": 300,
+    "plateau_patience": 5,
+    "isDebug": 0,
+    "project_name": "Cityscapes Semantic Segmentation with UNet",
+    "rs_dir": "./results"
+}

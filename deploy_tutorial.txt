@@ -1,0 +1,84 @@
+================================================================
+  DEPLOY CityScapeSegmentation TO HUGGING FACE SPACES
+================================================================
+
+STEP 1 — Create a Hugging Face Space
+--------------------------------------
+1. Go to https://huggingface.co
+2. Click your profile → New Space
+3. Name it (e.g. CityScapeSegmentationWebsite)
+4. Set SDK = Docker
+5. Click Create Space
+
+
+STEP 2 — Get a Hugging Face Access Token
+------------------------------------------
+1. Go to https://huggingface.co/settings/tokens
+2. Click New Token
+3. Give it a name, set Role = Write
+4. Click Generate & copy the token
+
+
+STEP 3 — Clone the HF Space repo
+-----------------------------------
+Open CMD and run:
+
+    git clone https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME
+
+
+STEP 4 — Copy project files into the cloned folder
+-----------------------------------------------------
+In CMD run:
+
+    xcopy "C:\path\to\CityScapeSegmentation" "C:\path\to\YOUR_SPACE_NAME" /E /H /Y
+
+
+STEP 5 — Remove large files from git history (if needed)
+----------------------------------------------------------
+HF rejects files larger than 10MB. Remove notebooks:
+
+    cd YOUR_SPACE_NAME
+    set FILTER_BRANCH_SQUELCH_WARNING=1
+    git filter-branch --force --index-filter "git rm --cached --ignore-unmatch *.ipynb" --prune-empty --tag-name-filter cat -- --all
+
+
+STEP 6 — Fix README.md
+------------------------
+Make sure README.md starts with:
+
+    ---
+    title: Cityscape Segmentation
+    emoji: ️
+    colorFrom: blue
+    colorTo: blue
+    sdk: docker
+    pinned: false
+    ---
+
+NOTE: colorTo must be one of: red, yellow, green, blue, indigo, purple, pink, gray
+
+
+STEP 7 — Add HF remote and push
+---------------------------------
+    git remote add hf https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME
+    git add .
+    git commit -m "deploy"
+    git push https://YOUR_USERNAME:YOUR_TOKEN@huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME main --force
+
+
+STEP 8 — Wait for build
+-------------------------
+1. Go to your Space URL on Hugging Face
+2. Click the Logs tab
+3. Wait 5-10 minutes for Docker build to complete
+4. Click App tab to use the website
+
+
+================================================================
+  NOTES
+================================================================
+- Dockerfile exposes port 7860 (required by HF Spaces)
+- gunicorn timeout is set to 300s for model download on cold start
+- Models are downloaded from Google Drive at startup
+- Free tier gives 16GB RAM (enough for all models)
+================================================================
