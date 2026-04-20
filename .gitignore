@@ -8,3 +8,5 @@ data/
 trained_results/
 *.ipynb
 .ipynb_checkpoints/
+tests/
+.venv/
