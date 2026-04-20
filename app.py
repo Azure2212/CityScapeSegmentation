@@ -119,12 +119,19 @@ def get_model(key: str):
     return model
 
 
-# Pre-load all models with configured URLs at startup
-print("Pre-loading all available models ...")
-for _key, _entry in MODEL_REGISTRY.items():
-    if _entry["url"]:
-        get_model(_key)
-print("All models ready.")
+def preload_available_models():
+    """Warm the model cache unless tests explicitly disable startup downloads."""
+    print("Pre-loading all available models ...")
+    for _key, _entry in MODEL_REGISTRY.items():
+        if _entry["url"]:
+            get_model(_key)
+    print("All models ready.")
+
+
+if os.environ.get("CITYSCAPES_PRELOAD_MODELS", "1") != "0":
+    preload_available_models()
+else:
+    print("Skipping model preload because CITYSCAPES_PRELOAD_MODELS=0.")
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────

@@ -17,7 +17,10 @@ from flask import jsonify, render_template, request
 
 from app import MODEL_REGISTRY, app as flask_app, get_model, get_transform
 from application import CLASSES, CONFIG_CMAP, DEVICE
-from utils.urban_scene_analysis import analyze_urban_scene
+from utils.urban_scene_analysis import analyze_urban_scene, compare_scene_analyses
+
+
+COMPARISON_MODEL_KEYS = ("UNet", "DeepLabV3", "LightSeg", "SwinV2B")
 
 
 def _decode_upload():
@@ -71,6 +74,34 @@ def _encode_overlay_png(
     return base64.b64encode(buffer.tobytes()).decode("utf-8")
 
 
+def _available_model(key: str) -> bool:
+    entry = MODEL_REGISTRY.get(key)
+    return bool(entry and entry["url"])
+
+
+def _comparison_models(base_model: str, requested_models: list[str]) -> tuple[list[str], list[dict[str, str]]]:
+    """Resolve comparison model keys while tracking skipped entries."""
+    selected = []
+    skipped = []
+    seen = set()
+
+    for model_key in [base_model, *requested_models]:
+        if model_key in seen:
+            continue
+        seen.add(model_key)
+
+        entry = MODEL_REGISTRY.get(model_key)
+        if entry is None:
+            skipped.append({"key": model_key, "label": model_key, "reason": "unknown model"})
+            continue
+        if not entry["url"]:
+            skipped.append({"key": model_key, "label": entry["label"], "reason": "model unavailable"})
+            continue
+        selected.append(model_key)
+
+    return selected, skipped
+
+
 @flask_app.route("/urban")
 def urban_dashboard():
     """Render the additive urban-planning dashboard."""
@@ -78,7 +109,17 @@ def urban_dashboard():
         {"key": key, "label": entry["label"], "available": bool(entry["url"])}
         for key, entry in MODEL_REGISTRY.items()
     ]
-    return render_template("urban_planning.html", models=models, classes=CLASSES)
+    comparison_models = [
+        {"key": key, "label": MODEL_REGISTRY[key]["label"], "available": _available_model(key)}
+        for key in COMPARISON_MODEL_KEYS
+        if key in MODEL_REGISTRY
+    ]
+    return render_template(
+        "urban_planning.html",
+        models=models,
+        comparison_models=comparison_models,
+        classes=CLASSES,
+    )
 
 
 @flask_app.route("/urban-predict", methods=["POST"])
@@ -110,14 +151,43 @@ def urban_predict():
     analysis = analyze_urban_scene(mask_full, classes=CLASSES, min_area=25)
     overlay_b64 = _encode_overlay_png(image, mask_full, selected_classes)
 
-    return jsonify(
-        {
-            "model": model_key,
-            "model_label": MODEL_REGISTRY[model_key]["label"],
-            "segmentation_image": overlay_b64,
-            **analysis,
-        }
-    )
+    payload = {
+        "model": model_key,
+        "model_label": MODEL_REGISTRY[model_key]["label"],
+        "segmentation_image": overlay_b64,
+        **analysis,
+    }
+
+    compare_models = request.form.getlist("compare_models[]")
+    if compare_models:
+        comparison_keys, skipped_models = _comparison_models(model_key, compare_models)
+        compared_analyses = {model_key: analysis}
+
+        for compare_key in comparison_keys:
+            if compare_key == model_key:
+                continue
+
+            try:
+                compare_mask = _predict_full_mask(image, compare_key)
+            except Exception as exc:  # pragma: no cover - exercised via endpoint tests with patching
+                skipped_models.append(
+                    {
+                        "key": compare_key,
+                        "label": MODEL_REGISTRY[compare_key]["label"],
+                        "reason": str(exc),
+                    }
+                )
+                continue
+
+            compared_analyses[compare_key] = analyze_urban_scene(compare_mask, classes=CLASSES, min_area=25)
+
+        payload["model_comparison"] = compare_scene_analyses(
+            compared_analyses,
+            model_labels={key: MODEL_REGISTRY[key]["label"] for key in compared_analyses},
+            skipped_models=skipped_models,
+        )
+
+    return jsonify(payload)
 
 
 # Gunicorn-compatible alias for hosts that expect an ``application`` object.

@@ -53,6 +53,22 @@
         </div>
       </section>
 
+      <section class="control-section">
+        <div class="section-line">
+          <span class="field-label">Model comparison</span>
+          <span class="field-note">Optional</span>
+        </div>
+        <p class="field-copy">Compare this image across the strongest pretrained scene-analysis models.</p>
+        <div class="compare-grid">
+          {% for model in comparison_models %}
+          <label class="class-toggle compare-toggle">
+            <input type="checkbox" value="{{ model.key }}" {% if not model.available %}disabled{% endif %} />
+            <span>{{ model.label }}{% if not model.available %} (unavailable){% endif %}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </section>
+
       <button type="button" id="runButton" class="run-button">Analyze scene</button>
       <p id="statusText" class="status-text" role="status"></p>
     </aside>
@@ -81,8 +97,32 @@
         <div class="section-heading">Spatial context</div>
         <dl id="spatialFlags" class="spatial-list"></dl>
       </section>
+
+      <section>
+        <div class="section-heading">Warnings</div>
+        <div id="warningList" class="warning-list"></div>
+      </section>
     </aside>
   </main>
+
+  <section class="interpretation-grid">
+    <div class="detail-column">
+      <div class="section-heading">Scene profile</div>
+      <div id="sceneProfile" class="profile-stack"></div>
+    </div>
+    <div class="detail-column">
+      <div class="section-heading">Street relations</div>
+      <div id="relationList" class="relation-list"></div>
+    </div>
+    <div class="detail-column">
+      <div class="section-heading">Scene tags</div>
+      <div id="tagList" class="tag-list"></div>
+    </div>
+    <div class="detail-column">
+      <div class="section-heading">Model comparison</div>
+      <div id="comparisonPanel" class="comparison-panel"></div>
+    </div>
+  </section>
 
   <section class="details">
     <div class="detail-column">
@@ -101,6 +141,10 @@
         </thead>
         <tbody id="objectRows"></tbody>
       </table>
+    </div>
+    <div class="detail-column">
+      <div class="section-heading">Region structure</div>
+      <div id="regionCards" class="region-list"></div>
     </div>
     <div class="detail-column">
       <div class="section-heading">Top classes</div>
