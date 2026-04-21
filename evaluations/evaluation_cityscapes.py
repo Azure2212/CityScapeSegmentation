@@ -15,10 +15,8 @@ from matplotlib.ticker import FormatStrFormatter
 from utils.datasets import get_transforms
 from utils.metrics import iou_score
 
-# ---------------------------------------------------------------------------
-# Colormap
-# ---------------------------------------------------------------------------
-
+# The evaluation colormap mirrors the class-to-color mapping used by the
+# application so qualitative outputs stay visually consistent across modules.
 _classes = {
     0: "road", 1: "sidewalk", 2: "building", 3: "wall", 4: "fence",
     5: "pole", 6: "traffic light", 7: "traffic sign", 8: "vegetation",
@@ -40,12 +38,9 @@ _color_mapping = {
 config_cmap = ListedColormap([to_rgb(_color_mapping[_classes[i]]) for i in sorted(_classes)])
 
 
-# ---------------------------------------------------------------------------
-# Training metrics charts
-# ---------------------------------------------------------------------------
-
 def _base_chart(df: pd.DataFrame, y_cols: list, ylabel: str, title: str,
                 path2save: str, scale: float = 1.0):
+    """Render one or more CSV metric columns into a saved line chart."""
     x = df["epoch"].tolist()
     plt.figure(figsize=(20, 6))
     for col in y_cols:
@@ -66,6 +61,7 @@ def _base_chart(df: pd.DataFrame, y_cols: list, ylabel: str, title: str,
 
 
 def plot_learning_rate(tracking_csv: str, path2save: str):
+    """Plot the per-epoch learning rate recorded during training."""
     df = pd.read_csv(tracking_csv)
     x  = df["epoch"].tolist()
     plt.figure(figsize=(20, 6))
@@ -83,26 +79,31 @@ def plot_learning_rate(tracking_csv: str, path2save: str):
 
 
 def plot_loss(tracking_csv: str, path2save: str):
+    """Plot training and validation loss from the tracking CSV."""
     _base_chart(pd.read_csv(tracking_csv), ["train_loss", "val_loss"],
                 "Loss", "Loss Curve", path2save)
 
 
 def plot_pixel_accuracy(tracking_csv: str, path2save: str):
+    """Plot training and validation pixel accuracy."""
     _base_chart(pd.read_csv(tracking_csv), ["train_pixel_acc", "val_pixel_acc"],
                 "Pixel Accuracy (%)", "Pixel Accuracy", path2save, scale=100)
 
 
 def plot_iou(tracking_csv: str, path2save: str):
+    """Plot training and validation mean IoU."""
     _base_chart(pd.read_csv(tracking_csv), ["train_iou", "val_iou"],
                 "IoU (%)", "IoU Score", path2save, scale=100)
 
 
 def plot_dice(tracking_csv: str, path2save: str):
+    """Plot training and validation Dice score."""
     _base_chart(pd.read_csv(tracking_csv), ["train_dice", "val_dice"],
                 "Dice (%)", "Dice Score", path2save, scale=100)
 
 
 def plot_all_metrics(tracking_csv: str, save_dir: str):
+    """Generate the standard chart set for one completed training run."""
     os.makedirs(save_dir, exist_ok=True)
     plot_learning_rate(tracking_csv, os.path.join(save_dir, "lr.png"))
     plot_loss(tracking_csv,          os.path.join(save_dir, "loss.png"))
@@ -110,10 +111,6 @@ def plot_all_metrics(tracking_csv: str, save_dir: str):
     plot_iou(tracking_csv,           os.path.join(save_dir, "iou.png"))
     plot_dice(tracking_csv,          os.path.join(save_dir, "dice.png"))
 
-
-# ---------------------------------------------------------------------------
-# Test inference
-# ---------------------------------------------------------------------------
 
 def run_test_evaluation(
     configs: dict,
@@ -126,6 +123,8 @@ def run_test_evaluation(
     Sample n_samples from the test split, run inference, visualize results,
     and print mean IoU.
     """
+    # The project stores test samples as the held-out tail of the validation
+    # directory, matching the split used in the dataset loader.
     val_tf = get_transforms(configs["image_size"], "val")
     val_image_dir = os.path.join(configs["cityscape_path"], "val", "image")
     all_images    = sorted(os.listdir(val_image_dir))
@@ -147,6 +146,8 @@ def run_test_evaluation(
             t_image = aug["image"].unsqueeze(0).to(device)
             t_mask  = aug["mask"].long().unsqueeze(0).to(device)
 
+            # The same forward path used during validation is reused here so
+            # qualitative plots and reported metrics stay aligned.
             output = model(t_image)
             pred   = torch.argmax(output, dim=1)
             pred_masks.append(pred.cpu())
@@ -158,7 +159,8 @@ def run_test_evaluation(
     print(f"Mean IoU over {len(selected)} samples: {mean_iou * 100:.2f}%")
     print(f"FW IoU  over {len(selected)} samples: {mean_fw_iou * 100:.2f}%")
 
-    # Visualization
+    # Save one qualitative grid containing the image, ground-truth mask, and
+    # predicted mask for each sampled test example.
     n = len(selected)
     plt.figure(figsize=(15, 4 * n))
     for i, img_name in enumerate(selected):

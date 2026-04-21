@@ -1,3 +1,5 @@
+"""Dataset and dataloader helpers for the preprocessed Cityscapes tensors."""
+
 import os
 
 import numpy as np
@@ -7,9 +9,12 @@ from torch.utils.data import Dataset, DataLoader
 
 
 def get_transforms(image_size: int, split: str) -> A.Compose:
+    """Build the split-specific augmentation pipeline."""
     if split == "train":
         return A.Compose(
             [
+                # Training uses a lightweight augmentation set so every image
+                # is standardized in size and may be mirrored horizontally.
                 A.Resize(image_size, image_size),
                 A.HorizontalFlip(p=0.5),
                 ToTensorV2(),
@@ -27,15 +32,14 @@ def get_transforms(image_size: int, split: str) -> A.Compose:
 
 
 class CityScapeDataset(Dataset):
+    """Load preprocessed `.npy` image and mask pairs for one dataset split."""
+
     def __init__(self, configs: dict, data_type: str, transform: A.Compose):
-        """
-        Args:
-            configs:   project config dict
-            data_type: 'train' | 'val' | 'test'
-            transform: albumentations Compose
-        """
+        """Resolve the file list for the requested split."""
         self.transform = transform
         self.configs = configs
+        # The dataset stores the held-out test subset inside the validation
+        # folder, so `test` reuses the `val` directory and slices it later.
         self.folder = "val" if data_type == "test" else data_type
 
         data_path = os.path.join(configs["cityscape_path"], self.folder)
@@ -45,8 +49,11 @@ class CityScapeDataset(Dataset):
         if data_type == "train":
             self.image_paths = image_paths
         elif data_type == "val":
+            # Validation uses the first 80% of the validation directory.
             self.image_paths = image_paths[: round(0.8 * len(image_paths))]
         elif data_type == "test":
+            # Test uses the remaining 20% so the project can hold out samples
+            # without requiring a separate on-disk test directory.
             self.image_paths = image_paths[round(0.8 * len(image_paths)) :]
         else:
             raise ValueError(f"data_type must be 'train', 'val', or 'test', got '{data_type}'")
@@ -57,6 +64,7 @@ class CityScapeDataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx: int):
+        """Load one image-mask pair and apply the split-specific transform."""
         img_path = self.image_paths[idx]
         mask_path = img_path.replace(
             f"/data/{self.folder}/image/", f"/data/{self.folder}/label/"
@@ -64,6 +72,8 @@ class CityScapeDataset(Dataset):
 
         image = np.load(img_path).astype(np.float32)
         mask = np.load(mask_path).astype(np.int64)
+        # The preprocessing pipeline stores ignored pixels as -1; the project
+        # remaps them into the explicit "others" class index.
         mask = np.where(mask == -1, 19, mask)
 
         if self.transform:
@@ -75,6 +85,7 @@ class CityScapeDataset(Dataset):
 
 
 def build_dataloaders(configs: dict):
+    """Construct the train, validation, and test dataloaders used by training."""
     train_tf = get_transforms(configs["image_size"], "train")
     val_tf   = get_transforms(configs["image_size"], "val")
 

@@ -1,3 +1,5 @@
+"""SwinV2-based segmentation head used in comparison experiments."""
+
 import timm
 import torch
 import torch.nn as nn
@@ -5,8 +7,12 @@ import torch.nn.functional as F
 
 
 class SwinV2B(nn.Module):
+    """Transformer encoder with a lightweight convolutional segmentation head."""
+
     def __init__(self, num_classes: int = 20, n_channels: int = 3):
         super().__init__()
+        # timm returns a multi-stage feature extractor; the project uses the
+        # deepest stage and adds a compact projection head for class logits.
         self.encoder = timm.create_model(
             "swinv2_base_window8_256",
             pretrained=True,
@@ -22,11 +28,14 @@ class SwinV2B(nn.Module):
         )
 
     def _to_bchw(self, t: torch.Tensor) -> torch.Tensor:
+        """Normalize encoder outputs to the channel-first layout expected by the head."""
         if t.ndim == 4 and t.shape[-1] < t.shape[1]:
             t = t.permute(0, 3, 1, 2).contiguous()
         return t
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # The head predicts on the deepest feature map, then upsamples the
+        # logits back to the original image resolution.
         H, W   = x.shape[2:]
         feats  = self.encoder(x)
         last   = self._to_bchw(feats[-1])
@@ -36,6 +45,7 @@ class SwinV2B(nn.Module):
 
 def load_SwinV2B(num_classes: int = 20, n_channels: int = 3,
                  pretrained_path: str = "", device: str = "cpu") -> SwinV2B:
+    """Instantiate SwinV2B and optionally restore checkpoint weights."""
     model = SwinV2B(num_classes=num_classes, n_channels=n_channels)
 
     if pretrained_path:

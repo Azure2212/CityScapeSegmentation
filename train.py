@@ -1,3 +1,5 @@
+"""Training entrypoint for the Cityscapes segmentation experiments."""
+
 import json
 import os
 import random
@@ -35,6 +37,7 @@ import argparse
 MODEL_CHOICES = ["UNet", "UNet_CBAM", "FCN", "SwinV2B", "LightSeg", "YOLOv11", "DeepLabV3"]
 
 def parse_args():
+    """Parse command-line overrides layered on top of the JSON config file."""
     parser = argparse.ArgumentParser(description="Train segmentation model on Cityscapes")
     parser.add_argument("--config",          default="configs.json",  help="Path to JSON config file")
     parser.add_argument("--model",           default="UNet",          choices=MODEL_CHOICES, help="Model architecture")
@@ -47,12 +50,14 @@ def parse_args():
     return parser.parse_args()
 
 def main():
+    """Resolve configuration, build the training pipeline, and run one experiment."""
     args = parse_args()
 
     with open(args.config) as f:
         configs = json.load(f)
 
-    # CLI overrides (applied before deriving paths)
+    # Command-line overrides are applied before derived output paths are created
+    # so the saved config matches the exact run configuration.
     if args.cityscape_path is not None:
         configs["cityscape_path"] = args.cityscape_path
     if args.rs_dir is not None:
@@ -66,12 +71,13 @@ def main():
     if args.debug:
         configs["isDebug"] = 1
 
-    # Runtime-derived paths
+    # Runtime artifacts are written into the run-results directory so the
+    # checkpoint, metric log, and resolved config stay grouped together.
     os.makedirs(configs["rs_dir"], exist_ok=True)
     configs["tracking_csv"]      = os.path.join(configs["rs_dir"], "trainingTracking.csv")
     configs["weight_saved_path"] = os.path.join(configs["rs_dir"], f"{args.model}_Cityscapes.pt")
 
-    # Save resolved config to results dir
+    # Persist the fully resolved configuration for reproducibility.
     with open(os.path.join(configs["rs_dir"], "configs.json"), "w") as f:
         json.dump(configs, f, indent=4)
 
@@ -79,13 +85,17 @@ def main():
     print(f"Device : {device}")
     print(f"Config : {configs}")
 
-    # Data
+    # Build the train/validation/test loaders before model construction so the
+    # experiment fails early if the dataset layout is invalid.
     train_loader, val_loader, test_loader = build_dataloaders(configs)
 
-    # Model
+    # The project stores the background-like "others" label as an additional
+    # class, so the model head uses cls_classes + 1 output channels.
     num_classes = configs["cls_classes"] + 1    # +1 for "others" class
     n_ch        = configs["n_channels"]
 
+    # Select the architecture requested on the command line while keeping the
+    # rest of the training pipeline architecture-agnostic.
     if args.model == "UNet":
         model = load_UNet(n_channels=n_ch, cls_classes=num_classes)
     elif args.model == "UNet_CBAM":
@@ -103,11 +113,13 @@ def main():
 
     print(f"Model  : {args.model}  |  Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    # Train
+    # The trainer owns epoch execution, checkpointing, CSV logging, and final
+    # test-set evaluation.
     trainer = UNet_Trainer(configs=configs, model=model, device=device)
     trainer.run(train_loader, val_loader, test_loader)
 
-    # Post-training: charts + visual test evaluation
+    # Post-training utilities convert the CSV log into reviewable charts and
+    # save qualitative predictions from the held-out test split.
     plot_all_metrics(configs["tracking_csv"], save_dir=os.path.join(configs["rs_dir"], "charts"))
     run_test_evaluation(configs, model, device, n_samples=10,
                         save_dir=os.path.join(configs["rs_dir"], "predictions"))
@@ -115,6 +127,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-#/data2/atran16/Anaconda_ForTrain/bin/python train.py --model UNet --batch_size 16 --epochs 300 --cityscape_path /data2/atran16/CityScapeSegmentationProject/datasets/data --rs_dir /data2/atran16/CityScapeSegmentationProject/trained_results/unet_run_results
-# xcopy "C:\Users\Dasan\OneDrive\Desktop\cityScapeSegmentationWebsite\CityScapeSegmentation" "C:\Users\Dasan\OneDrive\Desktop\cityScapeSegmentationWebsite\CityScapeSegmentationWebsite" /E /H /Y

@@ -13,3 +13,4 @@ tests/
 .venv/
 # Local-only report workspace
 report/
+.DS_Store
