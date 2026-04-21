@@ -8,3 +8,8 @@ data/
 trained_results/
 *.ipynb
 .ipynb_checkpoints/
+tests/__pycache__/
+tests/
+.venv/
+# Local-only report workspace
+report/
