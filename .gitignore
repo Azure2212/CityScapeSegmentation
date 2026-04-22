@@ -6,7 +6,7 @@ __pycache__/
 *.pth
 data/
 trained_results/
-*.ipynb
+# *.ipynb
 .ipynb_checkpoints/
 tests/__pycache__/
 tests/
