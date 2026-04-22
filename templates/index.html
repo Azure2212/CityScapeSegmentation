@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cityscape Segmentation</title>
   <style>
+    /* Base reset and overall page shell */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -12,7 +13,7 @@
     }
 
     body {
-      font-family: 'Segoe UI', sans-serif;
+      font-family: "Segoe UI", sans-serif;
       background: linear-gradient(160deg, #cce9fa 0%, #a8d8f5 40%, #ddf1ff 100%);
       min-height: 100vh;
       color: #1a3a5c;
@@ -54,11 +55,11 @@
     main {
       display: flex;
       gap: 28px;
-      padding: 36px 40px;
+      padding: 36px 40px 28px;
       align-items: stretch;
     }
 
-    /* ── Left panel: classes ── */
+    /* Left sidebar for overlay and comparison controls */
     .panel-classes {
       background: white;
       border-radius: 16px;
@@ -79,6 +80,41 @@
       margin-bottom: 16px;
       padding-bottom: 10px;
       border-bottom: 2px solid #7cc8f0;
+    }
+
+    .sidebar-section + .sidebar-section {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid #d8edf9;
+    }
+
+    .sidebar-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .sidebar-title h3 {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #1a6fa8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .sidebar-note {
+      font-size: 0.76rem;
+      color: #5a8aaa;
+      font-weight: 600;
+    }
+
+    .sidebar-copy {
+      margin-bottom: 12px;
+      font-size: 0.82rem;
+      color: #537f9f;
+      line-height: 1.5;
     }
 
     .class-list {
@@ -118,6 +154,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      text-transform: capitalize;
     }
 
     .class-id {
@@ -150,12 +187,45 @@
       color: white;
     }
 
-    /* ── Right panel: image area ── */
+    .compare-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .compare-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #d7ebf8;
+      background: #f7fbff;
+    }
+
+    .compare-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #07a86a;
+      flex-shrink: 0;
+    }
+
+    .compare-item label {
+      font-size: 0.84rem;
+      color: #1a3a5c;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .compare-item.is-disabled {
+      opacity: 0.58;
+    }
+
+    /* Upload controls, preview canvas, and reasoning panel */
     .panel-image {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 14px;
     }
 
     .upload-bar {
@@ -218,7 +288,23 @@
       opacity: 0.88;
     }
 
-    /* ── Image frame ── */
+    .btn-run:disabled {
+      cursor: wait;
+      opacity: 0.7;
+    }
+
+    .status-text {
+      min-height: 1.2rem;
+      padding: 0 4px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #1a6fa8;
+    }
+
+    .status-text.error {
+      color: #b33c4b;
+    }
+
     .image-and-text {
       display: flex;
       gap: 20px;
@@ -277,7 +363,7 @@
       padding: 20px 16px 14px;
       font-size: 0.88rem;
       color: #1a3a5c;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: "Segoe UI", sans-serif;
       line-height: 1.6;
       background: #f7fbff;
       outline: none;
@@ -312,8 +398,6 @@
       font-size: 0.82rem;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
-
     #previewImg {
       width: 100%;
       height: 100%;
@@ -323,6 +407,563 @@
       position: absolute;
       top: 0;
       left: 0;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    .loading-overlay span {
+      color: #1a6fa8;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    /* Appended analysis blocks rendered from the structured API payload */
+    .analysis-shell {
+      display: grid;
+      gap: 24px;
+      padding: 0 40px 40px;
+    }
+
+    .analysis-block {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid #d0eaf8;
+      box-shadow: 0 2px 18px rgba(26, 111, 168, 0.1);
+      overflow: hidden;
+    }
+
+    .analysis-block-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #d8edf9;
+      background: linear-gradient(180deg, rgba(240, 249, 255, 0.9), rgba(255, 255, 255, 0.96));
+    }
+
+    .analysis-block-header h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1a6fa8;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+    }
+
+    .analysis-block-body {
+      padding: 24px;
+    }
+
+    .analysis-hero {
+      padding: 18px 20px;
+      border-radius: 14px;
+      border: 1px solid #d9effb;
+      background: linear-gradient(135deg, #f1fbff 0%, #ffffff 72%);
+      margin-bottom: 20px;
+    }
+
+    .analysis-kicker {
+      margin-bottom: 8px;
+      color: #1a6fa8;
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+    }
+
+    .summary-text {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #1a3a5c;
+    }
+
+    .analysis-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .analysis-grid.three {
+      grid-template-columns: 1.4fr 1fr 1fr;
+    }
+
+    .analysis-grid.four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .analysis-column {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .analysis-section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #1a6fa8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .score-tile,
+    .analysis-card,
+    .warning-item,
+    .relation-card,
+    .tag-card,
+    .region-card,
+    .state-card {
+      border: 1px solid #d8edf9;
+      background: #f8fcff;
+      border-radius: 12px;
+    }
+
+    .score-tile,
+    .analysis-card,
+    .warning-item,
+    .relation-card,
+    .tag-card,
+    .region-card,
+    .state-card {
+      padding: 14px;
+    }
+
+    .score-tile {
+      min-height: 116px;
+    }
+
+    .score-value {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 900;
+      line-height: 1;
+      color: #07a86a;
+    }
+
+    .score-label {
+      margin: 8px 0 4px;
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+
+    .score-detail,
+    .analysis-copy,
+    .warning-copy,
+    .profile-copy,
+    .tag-copy,
+    .mini-copy {
+      margin: 0;
+      color: #537f9f;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .spatial-list {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px 16px;
+      margin: 0;
+      padding: 14px;
+      border: 1px solid #d8edf9;
+      border-radius: 12px;
+      background: #f8fcff;
+    }
+
+    .spatial-list dt {
+      color: #537f9f;
+      font-weight: 800;
+    }
+
+    .spatial-list dd {
+      margin: 0;
+      font-weight: 900;
+      color: #1a3a5c;
+      text-align: right;
+    }
+
+    .warning-list,
+    .profile-stack,
+    .relation-list,
+    .tag-list,
+    .comparison-panel,
+    .bar-list,
+    .analysis-class-stats,
+    .region-list,
+    .state-list,
+    .delta-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .warning-title {
+      margin: 0 0 6px;
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: #1a3a5c;
+    }
+
+    .profile-hero {
+      padding: 16px;
+      border: 1px solid #d8edf9;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #eefaff, #ffffff 72%);
+    }
+
+    .profile-hero.compact {
+      margin-bottom: 12px;
+    }
+
+    .profile-kicker {
+      margin: 0 0 8px;
+      color: #0d8fd4;
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .profile-hero h3 {
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+      text-transform: capitalize;
+    }
+
+    .mini-section {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mini-label {
+      color: #537f9f;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .mini-card-line,
+    .bar-meta,
+    .class-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .band-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .band-card {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .band-card-header {
+      display: grid;
+      gap: 8px;
+    }
+
+    .band-card-label {
+      margin: 0;
+      font-size: 0.96rem;
+      font-weight: 800;
+      text-transform: capitalize;
+    }
+
+    .band-card-pill {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #e8f6ff;
+      color: #0d8fd4;
+      font-size: 0.76rem;
+      font-weight: 800;
+      line-height: 1.2;
+      text-transform: capitalize;
+    }
+
+    .band-card-metric {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e2f0fa;
+    }
+
+    .band-card-metric-label,
+    .band-card-body-label {
+      color: #537f9f;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .band-card-metric-value {
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: #1a3a5c;
+    }
+
+    .band-card-body {
+      display: grid;
+      gap: 8px;
+    }
+
+    .band-class-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .band-class-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #e8f1f8;
+    }
+
+    .band-class-row:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .band-class-label {
+      color: #537f9f;
+      text-transform: capitalize;
+    }
+
+    .band-class-value {
+      color: #1a3a5c;
+      font-size: 0.84rem;
+    }
+
+    .band-empty {
+      margin: 0;
+      color: #537f9f;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .state-card.is-active,
+    .relation-card.is-active {
+      background: #edfdf4;
+      border-color: #c8f1da;
+    }
+
+    .state-card.is-muted,
+    .relation-card.is-muted {
+      background: #f9fcfe;
+    }
+
+    .state-pill {
+      min-width: 36px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #e7f5ff;
+      color: #0d8fd4;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #e7f5ff;
+      color: #0d8fd4;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .chip.subtle {
+      background: #eef5fb;
+      color: #537f9f;
+    }
+
+    .tag-card h3 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .plain-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #537f9f;
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    .empty-copy {
+      margin: 0;
+      padding: 14px;
+      border: 1px dashed #cfe6f4;
+      border-radius: 12px;
+      color: #537f9f;
+      font-size: 0.86rem;
+      background: #f8fcff;
+    }
+
+    .bar-row,
+    .class-row {
+      display: grid;
+      gap: 7px;
+    }
+
+    .bar-meta,
+    .class-meta {
+      gap: 14px;
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .bar-track {
+      height: 10px;
+      border-radius: 999px;
+      background: #e4f0f8;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0;
+      background: #1488cc;
+      transition: width 360ms ease;
+    }
+
+    .bar-row:nth-child(2n) .bar-fill {
+      background: #07a86a;
+    }
+
+    .bar-row:nth-child(3n) .bar-fill {
+      background: #22c1e8;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    th,
+    td {
+      padding: 10px 0;
+      border-bottom: 1px solid #d8edf9;
+      text-align: left;
+    }
+
+    th {
+      color: #5a8aaa;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    td:nth-child(2),
+    td:nth-child(3),
+    th:nth-child(2),
+    th:nth-child(3) {
+      text-align: right;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Responsive layout adjustments for narrower screens */
+    @media (max-width: 1280px) {
+      main {
+        flex-direction: column;
+      }
+
+      .panel-classes {
+        width: 100%;
+      }
+
+      .analysis-grid.four {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .analysis-grid.three {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .image-and-text {
+        flex-direction: column;
+      }
+
+      .reasoning-panel,
+      .image-frame {
+        min-height: 360px;
+      }
+
+      .score-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      header,
+      footer {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      main {
+        padding: 20px;
+      }
+
+      .analysis-shell {
+        padding: 0 20px 20px;
+      }
+
+      .upload-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      #fileName {
+        white-space: normal;
+      }
+
+      .class-list,
+      .analysis-grid.four {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -334,58 +975,76 @@
   </header>
 
   <main>
-
-    <!-- Class selector -->
+    <!-- Sidebar controls define the overlay classes and optional comparison models. -->
     <aside class="panel-classes">
       <h2>Classes</h2>
-      <div class="btn-row" style="margin-top:12px;padding-top:0;border-top:none;">
-        <button class="btn-small" onclick="setAll(true)">All</button>
-        <button class="btn-small" onclick="setAll(false)">None</button>
-      </div>
-      <div class="class-list" style="margin-top:12px;">
-        <div class="class-item"><input type="checkbox" id="cls0" checked /><label for="cls0">Road</label><span class="class-id">00</span></div>
-        <div class="class-item"><input type="checkbox" id="cls1" checked /><label for="cls1">Sidewalk</label><span class="class-id">01</span></div>
-        <div class="class-item"><input type="checkbox" id="cls2" checked /><label for="cls2">Building</label><span class="class-id">02</span></div>
-        <div class="class-item"><input type="checkbox" id="cls3" /><label for="cls3">Wall</label><span class="class-id">03</span></div>
-        <div class="class-item"><input type="checkbox" id="cls4" /><label for="cls4">Fence</label><span class="class-id">04</span></div>
-        <div class="class-item"><input type="checkbox" id="cls5" /><label for="cls5">Pole</label><span class="class-id">05</span></div>
-        <div class="class-item"><input type="checkbox" id="cls6" /><label for="cls6">Traffic Light</label><span class="class-id">06</span></div>
-        <div class="class-item"><input type="checkbox" id="cls7" /><label for="cls7">Traffic Sign</label><span class="class-id">07</span></div>
-        <div class="class-item"><input type="checkbox" id="cls8" checked /><label for="cls8">Vegetation</label><span class="class-id">08</span></div>
-        <div class="class-item"><input type="checkbox" id="cls9" /><label for="cls9">Terrain</label><span class="class-id">09</span></div>
-        <div class="class-item"><input type="checkbox" id="cls10" checked /><label for="cls10">Sky</label><span class="class-id">10</span></div>
-        <div class="class-item"><input type="checkbox" id="cls11" checked /><label for="cls11">Person</label><span class="class-id">11</span></div>
-        <div class="class-item"><input type="checkbox" id="cls12" /><label for="cls12">Rider</label><span class="class-id">12</span></div>
-        <div class="class-item"><input type="checkbox" id="cls13" checked /><label for="cls13">Car</label><span class="class-id">13</span></div>
-        <div class="class-item"><input type="checkbox" id="cls14" /><label for="cls14">Truck</label><span class="class-id">14</span></div>
-        <div class="class-item"><input type="checkbox" id="cls15" /><label for="cls15">Bus</label><span class="class-id">15</span></div>
-        <div class="class-item"><input type="checkbox" id="cls16" /><label for="cls16">Train</label><span class="class-id">16</span></div>
-        <div class="class-item"><input type="checkbox" id="cls17" /><label for="cls17">Motorcycle</label><span class="class-id">17</span></div>
-        <div class="class-item"><input type="checkbox" id="cls18" /><label for="cls18">Bicycle</label><span class="class-id">18</span></div>
-        <div class="class-item"><input type="checkbox" id="cls19" /><label for="cls19">Others</label><span class="class-id">19</span></div>
-      </div>
+
+      <section class="sidebar-section">
+        <div class="btn-row" style="margin-top:0;padding-top:0;border-top:none;">
+          <button class="btn-small" type="button" onclick="setAll(true)">All</button>
+          <button class="btn-small" type="button" onclick="setAll(false)">None</button>
+        </div>
+        <div class="class-list" style="margin-top:12px;">
+          {% for class_id, class_name in classes.items() %}
+          <div class="class-item">
+            <input
+              type="checkbox"
+              id="cls{{ class_id }}"
+              value="{{ class_id }}"
+              {% if class_id in default_checked_classes %}checked{% endif %}
+            />
+            <label for="cls{{ class_id }}">{{ class_name|title }}</label>
+            <span class="class-id">{{ "%02d"|format(class_id) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="sidebar-section">
+        <div class="sidebar-title">
+          <h3>Model Comparison</h3>
+          <span class="sidebar-note">Optional</span>
+        </div>
+        <p class="sidebar-copy">Run additional pretrained models on the same image and compare the planning signals below the original segmentation workspace.</p>
+        <div class="compare-list">
+          {% for model in comparison_models %}
+          <div class="compare-item {% if not model.available %}is-disabled{% endif %}">
+            <input
+              type="checkbox"
+              id="compare-{{ model.key }}"
+              value="{{ model.key }}"
+              {% if not model.available %}disabled{% endif %}
+            />
+            <label for="compare-{{ model.key }}">
+              {{ model.label }}{% if not model.available %} (unavailable){% endif %}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
     </aside>
 
-    <!-- Image panel -->
+    <!-- The primary workspace keeps the original upload, preview, and
+         reasoning flow while feeding the structured analysis blocks below. -->
     <section class="panel-image">
-
       <div class="upload-bar">
         <label for="imageInput">
-          <!-- upload icon -->
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Upload Image
         </label>
         <input type="file" id="imageInput" accept="image/*" onchange="handleUpload(event)" />
         <span id="fileName">No file chosen</span>
         <select id="modelSelect" style="padding:9px 12px;border:1.5px solid #d0eaf8;border-radius:9px;font-size:0.88rem;color:#1a3a5c;background:white;cursor:pointer;outline:none;">
-          {% for m in models %}
-          <option value="{{ m.key }}" {% if not m.available %}disabled{% endif %}>
-            {{ m.label }}{% if not m.available %} (unavailable){% endif %}
+          {% for model in models %}
+          <option value="{{ model.key }}" {% if not model.available %}disabled{% endif %}>
+            {{ model.label }}{% if not model.available %} (unavailable){% endif %}
           </option>
           {% endfor %}
         </select>
-        <button class="btn-run" onclick="runSegmentation()">Run Segmentation</button>
+        <button class="btn-run" type="button" onclick="runSegmentation()">Run Segmentation</button>
       </div>
+
+      <p id="statusText" class="status-text" role="status"></p>
 
       <div class="image-and-text">
         <div class="image-frame" id="imageFrame">
@@ -397,25 +1056,147 @@
             <span>Upload an image to get started</span>
           </div>
           <img id="previewImg" alt="Uploaded cityscape" />
-          <div id="loadingOverlay" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,0.75);display:none;align-items:center;justify-content:center;border-radius:12px;flex-direction:column;gap:12px;">
+          <div id="loadingOverlay" class="loading-overlay">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1a6fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite">
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
             </svg>
-            <span style="color:#1a6fa8;font-weight:600;font-size:0.9rem;">Running segmentation...</span>
+            <span>Running segmentation and scene analysis...</span>
           </div>
         </div>
 
         <div class="reasoning-panel">
-<textarea placeholder="Segmentation reasoning will appear here..." readonly></textarea>
+          <div class="legend">Reasoning</div>
+          <textarea id="reasoningText" placeholder="Segmentation reasoning and planning summary will appear here..." readonly></textarea>
         </div>
       </div>
-
     </section>
   </main>
 
+  <!-- These appended sections render the structured scene-analysis payload
+       returned by the unified inference endpoint. -->
+  <div class="analysis-shell">
+    <section class="analysis-block">
+      <div class="analysis-block-header">
+        <h2>Planning Summary</h2>
+      </div>
+      <div class="analysis-block-body">
+        <div class="analysis-hero">
+          <p class="analysis-kicker">Planning Readout</p>
+          <p id="summaryText" class="summary-text">Run an analysis to populate the planning readout.</p>
+        </div>
+        <div class="analysis-grid three">
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Signals</h3>
+            <div id="scoreGrid" class="score-grid">
+              <p class="empty-copy">Planning scores will appear here.</p>
+            </div>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Spatial Context</h3>
+            <dl id="spatialFlags" class="spatial-list">
+              <dt>Road-adjacent</dt>
+              <dd>--</dd>
+              <dt>Sidewalk-adjacent</dt>
+              <dd>--</dd>
+              <dt>Unclassified</dt>
+              <dd>--</dd>
+              <dt>Signal</dt>
+              <dd>--</dd>
+            </dl>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Warnings</h3>
+            <div id="warningList" class="warning-list">
+              <p class="empty-copy">Warnings will appear here when the scene-analysis heuristics detect weak or ambiguous structure.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="analysis-block">
+      <div class="analysis-block-header">
+        <h2>Interpretation</h2>
+      </div>
+      <div class="analysis-block-body">
+        <div class="analysis-grid four">
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Scene Profile</h3>
+            <div id="sceneProfile" class="profile-stack">
+              <p class="empty-copy">Scene layout information will appear here.</p>
+            </div>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Street Relations</h3>
+            <div id="relationList" class="relation-list">
+              <p class="empty-copy">Street-relation heuristics will appear here.</p>
+            </div>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Scene Tags</h3>
+            <div id="tagList" class="tag-list">
+              <p class="empty-copy">Scene tags will appear here.</p>
+            </div>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Model Comparison</h3>
+            <div id="comparisonPanel" class="comparison-panel">
+              <p class="empty-copy">Select comparison models to render cross-model agreement and disagreement.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="analysis-block">
+      <div class="analysis-block-header">
+        <h2>Details</h2>
+      </div>
+      <div class="analysis-block-body">
+        <div class="analysis-grid four">
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Planning Groups</h3>
+            <div id="groupBars" class="bar-list">
+              <p class="empty-copy">Planning groups will appear here.</p>
+            </div>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Object Counts</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Count</th>
+                  <th>Area</th>
+                </tr>
+              </thead>
+              <tbody id="objectRows">
+                <tr>
+                  <td colspan="3" style="color:#5a8aaa;text-align:left;padding-top:12px;border-bottom:0;">Run an analysis to populate object counts.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Region Structure</h3>
+            <div id="regionCards" class="region-list">
+              <p class="empty-copy">Region structure will appear here.</p>
+            </div>
+          </section>
+          <section class="analysis-column">
+            <h3 class="analysis-section-title">Top Classes</h3>
+            <div id="classStats" class="analysis-class-stats">
+              <p class="empty-copy">Top semantic classes will appear here.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- The footer is static branding and does not participate in the data flow. -->
   <footer>
     <span>Anh Tuan Tran</span>
-    <!-- handshake icon -->
     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
       <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
@@ -427,70 +1208,528 @@
   </footer>
 
   <script>
+    // Cache the main DOM nodes once so the rendering helpers can update them
+    // without repeated lookups.
+    const imageInput = document.getElementById("imageInput");
+    const fileName = document.getElementById("fileName");
+    const previewImg = document.getElementById("previewImg");
+    const placeholder = document.getElementById("placeholder");
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const statusText = document.getElementById("statusText");
+    const modelSelect = document.getElementById("modelSelect");
+    const reasoningText = document.getElementById("reasoningText");
+    const summaryText = document.getElementById("summaryText");
+    const scoreGrid = document.getElementById("scoreGrid");
+    const spatialFlags = document.getElementById("spatialFlags");
+    const warningList = document.getElementById("warningList");
+    const sceneProfile = document.getElementById("sceneProfile");
+    const relationList = document.getElementById("relationList");
+    const tagList = document.getElementById("tagList");
+    const comparisonPanel = document.getElementById("comparisonPanel");
+    const groupBars = document.getElementById("groupBars");
+    const objectRows = document.getElementById("objectRows");
+    const regionCards = document.getElementById("regionCards");
+    const classStats = document.getElementById("classStats");
+
     let uploadedFile = null;
 
-    function handleUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
+    // Read the current overlay-class and comparison-model selections from the
+    // sidebar controls before building the request payload.
+    function overlayCheckboxes() {
+      return [...document.querySelectorAll(".class-list input[type='checkbox']")];
+    }
+
+    function comparisonCheckboxes() {
+      return [...document.querySelectorAll(".compare-list input[type='checkbox']")];
+    }
+
+    function setStatus(message, isError = false) {
+      statusText.textContent = message;
+      statusText.classList.toggle("error", isError);
+    }
+
+    function emptyCopy(message) {
+      return `<p class="empty-copy">${message}</p>`;
+    }
+
+    function humanizeKey(key) {
+      return key
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (match) => match.toUpperCase());
+    }
+
+    // Restore every appended analysis panel to its empty state before the
+    // first request, after a file change, or after an error.
+    function resetAnalysisPanels() {
+      summaryText.textContent = "Run an analysis to populate the planning readout.";
+      scoreGrid.innerHTML = emptyCopy("Planning scores will appear here.");
+      spatialFlags.innerHTML = `
+        <dt>Road-adjacent</dt>
+        <dd>--</dd>
+        <dt>Sidewalk-adjacent</dt>
+        <dd>--</dd>
+        <dt>Unclassified</dt>
+        <dd>--</dd>
+        <dt>Signal</dt>
+        <dd>--</dd>
+      `;
+      warningList.innerHTML = emptyCopy("Warnings will appear here when the scene-analysis heuristics detect weak or ambiguous structure.");
+      sceneProfile.innerHTML = emptyCopy("Scene layout information will appear here.");
+      relationList.innerHTML = emptyCopy("Street-relation heuristics will appear here.");
+      tagList.innerHTML = emptyCopy("Scene tags will appear here.");
+      comparisonPanel.innerHTML = emptyCopy("Select comparison models to render cross-model agreement and disagreement.");
+      groupBars.innerHTML = emptyCopy("Planning groups will appear here.");
+      objectRows.innerHTML = `
+        <tr>
+          <td colspan="3" style="color:#5a8aaa;text-align:left;padding-top:12px;border-bottom:0;">Run an analysis to populate object counts.</td>
+        </tr>
+      `;
+      regionCards.innerHTML = emptyCopy("Region structure will appear here.");
+      classStats.innerHTML = emptyCopy("Top semantic classes will appear here.");
+    }
+
+    function clearOutputs() {
+      // Clear both the reasoning panel and the structured analysis panels so a
+      // new upload does not reuse stale results.
+      setStatus("");
+      reasoningText.value = "";
+      resetAnalysisPanels();
+    }
+
+    function handleUpload(event) {
+      // File selection updates the client-side preview immediately and resets
+      // prior server results.
+      const file = event.target.files[0];
+      if (!file) {
+        return;
+      }
+
       uploadedFile = file;
-      document.getElementById('fileName').textContent = file.name;
+      fileName.textContent = file.name;
+      clearOutputs();
+
       const reader = new FileReader();
-      reader.onload = ev => {
-        const img = document.getElementById('previewImg');
-        img.src = ev.target.result;
-        img.style.display = 'block';
-        document.getElementById('placeholder').style.display = 'none';
+      reader.onload = (loadEvent) => {
+        previewImg.src = loadEvent.target.result;
+        previewImg.style.display = "block";
+        placeholder.style.display = "none";
       };
       reader.readAsDataURL(file);
     }
 
     function setAll(state) {
-      document.querySelectorAll('.class-list input[type="checkbox"]')
-        .forEach(cb => cb.checked = state);
+      overlayCheckboxes().forEach((checkbox) => {
+        checkbox.checked = state;
+      });
     }
 
-    async function runSegmentation() {
-      if (!uploadedFile) {
-        alert('Please upload an image first.');
+    // Each renderer converts one response fragment into the markup used by its
+    // corresponding analysis panel.
+    function renderScores(scores) {
+      scoreGrid.innerHTML = Object.values(scores)
+        .map((item) => `
+          <article class="score-tile">
+            <p class="score-value">${Number(item.score).toFixed(1)}</p>
+            <p class="score-label">${item.label}</p>
+            <p class="score-detail">${item.detail}</p>
+          </article>
+        `)
+        .join("");
+    }
+
+    function renderSpatialFlags(flags) {
+      spatialFlags.innerHTML = `
+        <dt>Road-adjacent</dt>
+        <dd>${flags.road_adjacent_active_mobility}</dd>
+        <dt>Sidewalk-adjacent</dt>
+        <dd>${flags.sidewalk_adjacent_active_mobility}</dd>
+        <dt>Unclassified</dt>
+        <dd>${flags.unclassified_active_mobility}</dd>
+        <dt>Signal</dt>
+        <dd>${flags.signal}</dd>
+      `;
+    }
+
+    function renderWarnings(warnings) {
+      if (!warnings.length) {
+        warningList.innerHTML = emptyCopy("No analysis warnings for this scene.");
         return;
       }
 
-      // Collect selected class indices
-      const selected = [...document.querySelectorAll('.class-list input[type="checkbox"]')]
-        .map((cb, i) => cb.checked ? i : null)
-        .filter(i => i !== null);
+      warningList.innerHTML = warnings
+        .map((item) => `
+          <article class="warning-item">
+            <p class="warning-title">${humanizeKey(item.key)}</p>
+            <p class="warning-copy">${item.detail}</p>
+          </article>
+        `)
+        .join("");
+    }
 
-      // Show loading overlay
-      const overlay = document.getElementById('loadingOverlay');
-      overlay.style.display = 'flex';
+    function renderBandCards(bands) {
+      // Band cards are reused for both vertical and horizontal layout views.
+      return bands
+        .map((band) => {
+          const topClasses = band.top_classes.length
+            ? `
+              <ul class="band-class-list">
+                ${band.top_classes.map((item) => `
+                  <li class="band-class-row">
+                    <span class="band-class-label">${item.label}</span>
+                    <strong class="band-class-value">${Number(item.percentage).toFixed(1)}%</strong>
+                  </li>
+                `).join("")}
+              </ul>
+            `
+            : `<p class="band-empty">No visible classes.</p>`;
 
-      // Build form data
+          return `
+            <article class="analysis-card band-card">
+              <div class="band-card-header">
+                <p class="band-card-label">${band.label}</p>
+                <span class="band-card-pill">${band.dominant_label || "No dominant class"}</span>
+              </div>
+              <div class="band-card-metric">
+                <span class="band-card-metric-label">Dominant share</span>
+                <span class="band-card-metric-value">${Number(band.dominant_percentage).toFixed(1)}%</span>
+              </div>
+              <div class="band-card-body">
+                <p class="band-card-body-label">Top classes</p>
+                ${topClasses}
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    function renderSceneProfile(layout) {
+      const priors = Object.values(layout.priors)
+        .map((item) => `
+          <article class="state-card ${item.active ? "is-active" : "is-muted"}">
+            <div class="mini-card-line">
+              <span>${item.label}</span>
+              <span>${Number(item.score).toFixed(1)}</span>
+            </div>
+            <p class="mini-copy">${item.detail}</p>
+          </article>
+        `)
+        .join("");
+
+      sceneProfile.innerHTML = `
+        <article class="profile-hero">
+          <p class="profile-kicker">Dominant layout</p>
+          <h3>${layout.dominant_layout}</h3>
+          <p class="profile-copy">Height-aware priors, band composition, and corridor openness are derived directly from the predicted mask.</p>
+        </article>
+        <div class="mini-section">
+          <p class="mini-label">Vertical bands</p>
+          <div class="band-grid">
+            ${renderBandCards(layout.vertical_bands)}
+          </div>
+        </div>
+        <div class="mini-section">
+          <p class="mini-label">Horizontal bands</p>
+          <div class="band-grid">
+            ${renderBandCards(layout.horizontal_bands)}
+          </div>
+        </div>
+        <div class="mini-section">
+          <p class="mini-label">Street-scene priors</p>
+          <div class="state-list">
+            ${priors}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRelations(flags) {
+      relationList.innerHTML = Object.values(flags)
+        .map((item) => `
+          <article class="relation-card ${item.active ? "is-active" : "is-muted"}">
+            <div class="mini-card-line">
+              <span>${item.label}</span>
+              <span class="state-pill">${item.active ? item.count : 0}</span>
+            </div>
+            <p class="mini-copy">${item.detail}</p>
+          </article>
+        `)
+        .join("");
+    }
+
+    function renderTags(tags) {
+      if (!tags.length) {
+        tagList.innerHTML = emptyCopy("No strong scene tags for this image.");
+        return;
+      }
+
+      tagList.innerHTML = tags
+        .map((tag) => `
+          <article class="tag-card">
+            <h3>${tag.label}</h3>
+            <p class="tag-copy">${tag.detail}</p>
+            <div class="chip-row">
+              ${tag.evidence.map((item) => `<span class="chip">${item}</span>`).join("")}
+            </div>
+          </article>
+        `)
+        .join("");
+    }
+
+    function renderGroupBars(groups) {
+      groupBars.innerHTML = groups
+        .map((group) => `
+          <div class="bar-row">
+            <div class="bar-meta">
+              <span>${group.label}</span>
+              <span>${Number(group.percentage).toFixed(1)}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${Math.min(group.percentage, 100)}%"></div>
+            </div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function renderObjectCounts(counts) {
+      objectRows.innerHTML = counts
+        .map((item) => `
+          <tr>
+            <td>${item.label}</td>
+            <td>${item.count}</td>
+            <td>${Number(item.percentage).toFixed(2)}%</td>
+          </tr>
+        `)
+        .join("");
+    }
+
+    function renderRegionStats(regionStats) {
+      if (!regionStats.classes.length) {
+        regionCards.innerHTML = emptyCopy("No countable regions passed the area threshold.");
+        return;
+      }
+
+      const summary = `
+        <article class="profile-hero compact">
+          <p class="profile-kicker">Approximate thing/stuff layer</p>
+          <h3>${regionStats.total_regions} regions</h3>
+          <p class="profile-copy">Connected components are used as approximate instances, not true panoptic objects.</p>
+        </article>
+      `;
+
+      const cards = regionStats.classes
+        .slice(0, 8)
+        .map((item) => {
+          const firstRegion = item.regions[0];
+          const context = (firstRegion?.adjacent_stuff_classes || [])
+            .map((adjacent) => `<span class="chip subtle">${adjacent.label} ${Number(adjacent.percentage).toFixed(1)}%</span>`)
+            .join("");
+
+          return `
+            <article class="region-card">
+              <div class="mini-card-line">
+                <span>${item.label}</span>
+                <span>${item.count} region(s)</span>
+              </div>
+              <p class="mini-copy">${Number(item.percentage).toFixed(1)}% area • ${item.dominant_vertical_band}/${item.dominant_horizontal_band}</p>
+              <div class="chip-row">
+                ${context || `<span class="chip subtle">No dominant stuff adjacency</span>`}
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+
+      regionCards.innerHTML = summary + cards;
+    }
+
+    function renderClassStats(stats) {
+      const topStats = stats
+        .filter((item) => item.pixels > 0)
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 8);
+
+      if (!topStats.length) {
+        classStats.innerHTML = emptyCopy("No visible classes.");
+        return;
+      }
+
+      classStats.innerHTML = topStats
+        .map((item) => `
+          <div class="class-row">
+            <div class="class-meta">
+              <span>${item.label}</span>
+              <span>${Number(item.percentage).toFixed(1)}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${Math.min(item.percentage, 100)}%"></div>
+            </div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function renderHighlightList(title, items) {
+      // Comparison highlights focus on the largest class or group spreads
+      // across the selected model analyses.
+      if (!items.length) {
+        return "";
+      }
+
+      return `
+        <div class="mini-section">
+          <p class="mini-label">${title}</p>
+          <div class="delta-list">
+            ${items.map((item) => `
+              <article class="analysis-card">
+                <div class="mini-card-line">
+                  <span>${item.label}</span>
+                  <span>${Number(item.range).toFixed(1)}%</span>
+                </div>
+                <p class="mini-copy">${item.min_label} ${Number(item.min_percentage).toFixed(1)}% vs ${item.max_label} ${Number(item.max_percentage).toFixed(1)}%</p>
+              </article>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderModelComparison(comparison) {
+      if (!comparison) {
+        comparisonPanel.innerHTML = emptyCopy("Select comparison models to render cross-model agreement and disagreement.");
+        return;
+      }
+
+      const comparedModels = comparison.models
+        .map((item) => `
+          <article class="analysis-card">
+            <div class="mini-card-line">
+              <span>${item.label}</span>
+              <span>${item.dominant_layout}</span>
+            </div>
+            <p class="mini-copy">${item.scene_tags.length ? item.scene_tags.join(", ") : "No strong tags"}</p>
+          </article>
+        `)
+        .join("");
+
+      const sharedTags = comparison.shared_tags.length
+        ? `<div class="chip-row">${comparison.shared_tags.map((tag) => `<span class="chip">${tag.label}</span>`).join("")}</div>`
+        : emptyCopy("No shared scene tags across the compared models.");
+
+      const notes = comparison.disagreement_notes.length
+        ? `<ul class="plain-list">${comparison.disagreement_notes.map((note) => `<li>${note}</li>`).join("")}</ul>`
+        : emptyCopy("No disagreement notes.");
+
+      const skipped = comparison.skipped_models.length
+        ? `
+          <div class="mini-section">
+            <p class="mini-label">Skipped models</p>
+            <ul class="plain-list">
+              ${comparison.skipped_models.map((item) => `<li>${item.label}: ${item.reason}</li>`).join("")}
+            </ul>
+          </div>
+        `
+        : "";
+
+      comparisonPanel.innerHTML = `
+        <div class="mini-section">
+          <p class="mini-label">Compared models</p>
+          <div class="delta-list">
+            ${comparedModels}
+          </div>
+        </div>
+        <div class="mini-section">
+          <p class="mini-label">Shared tags</p>
+          ${sharedTags}
+        </div>
+        ${renderHighlightList("Class spreads", comparison.class_delta_highlights)}
+        ${renderHighlightList("Group spreads", comparison.group_delta_highlights)}
+        <div class="mini-section">
+          <p class="mini-label">Disagreement notes</p>
+          ${notes}
+        </div>
+        ${skipped}
+      `;
+    }
+
+    function renderResults(data) {
+      // The unified /predict response contains both the legacy reasoning text
+      // and the structured payload for the appended analysis panels.
+      summaryText.textContent = data.summary;
+      renderScores(data.planning_scores);
+      renderSpatialFlags(data.spatial_flags);
+      renderWarnings(data.analysis_warnings || []);
+      renderSceneProfile(data.layout_profile);
+      renderRelations(data.relation_flags);
+      renderTags(data.scene_tags || []);
+      renderGroupBars(data.group_stats);
+      renderObjectCounts(data.object_counts);
+      renderRegionStats(data.region_stats);
+      renderClassStats(data.class_stats);
+      renderModelComparison(data.model_comparison || null);
+      reasoningText.value = data.reasoning;
+    }
+
+    async function runSegmentation() {
+      // Serialize the uploaded image, the chosen primary model, the overlay
+      // class selection, and any optional comparison-model requests.
+      if (!uploadedFile) {
+        setStatus("Please upload an image first.", true);
+        return;
+      }
+
+      const selectedClasses = overlayCheckboxes()
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.value);
+
+      const compareModels = comparisonCheckboxes()
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.value);
+
       const form = new FormData();
-      form.append('image', uploadedFile);
-      form.append('model', document.getElementById('modelSelect').value);
-      selected.forEach(i => form.append('classes[]', i));
+      form.append("image", uploadedFile);
+      form.append("model", modelSelect.value);
+
+      if (selectedClasses.length) {
+        selectedClasses.forEach((classId) => form.append("classes[]", classId));
+      } else {
+        form.append("classes[]", "-1");
+      }
+
+      compareModels.forEach((modelKey) => form.append("compare_models[]", modelKey));
+
+      loadingOverlay.style.display = "flex";
+      setStatus("Running segmentation and planning analysis...");
 
       try {
-        const res = await fetch('/predict', { method: 'POST', body: form });
-        if (!res.ok) { alert('Server error: ' + res.status); return; }
-        const data = await res.json();
+        // The same endpoint returns the overlay image, the merged reasoning
+        // text, and all structured scene-analysis data.
+        const response = await fetch("/predict", { method: "POST", body: form });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || `Server returned ${response.status}`);
+        }
 
-        // Replace image frame with segmentation mask
-        const img = document.getElementById('previewImg');
-        img.src = 'data:image/png;base64,' + data.segmentation_image;
-        img.style.display = 'block';
-        document.getElementById('placeholder').style.display = 'none';
+        // Replace the preview with the returned overlay, then refresh every
+        // analysis block from the same response object.
+        previewImg.src = `data:image/png;base64,${data.segmentation_image}`;
+        previewImg.style.display = "block";
+        placeholder.style.display = "none";
 
-        // Show reasoning in panel
-        const textarea = document.querySelector('.reasoning-panel textarea');
-        textarea.value = data.reasoning;
-
-      } catch (err) {
-        alert('Request failed: ' + err);
+        renderResults(data);
+        setStatus(`Analyzed with ${data.model_label}.`);
+      } catch (error) {
+        reasoningText.value = `Error: ${error.message}`;
+        resetAnalysisPanels();
+        setStatus(error.message, true);
       } finally {
-        overlay.style.display = 'none';
+        loadingOverlay.style.display = "none";
       }
     }
+
+    // Initialize the dashboard before the first upload.
+    resetAnalysisPanels();
   </script>
 
 </body>

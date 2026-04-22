@@ -1,3 +1,10 @@
+"""Shared constants and baseline local inference helpers.
+
+This module predates the Flask app and still provides the canonical class map,
+colormap, device selection, and a minimal single-image inference path used by
+the repository's standalone utilities.
+"""
+
 import sys
 import io
 import os
@@ -13,8 +20,8 @@ from albumentations.pytorch import ToTensorV2
 sys.path.insert(0, os.path.dirname(__file__))
 from models import load_UNet
 
-# ── Constants ──────────────────────────────────────────────────────────────────
-
+# The class map defines the semantic labels used across training, evaluation,
+# visualization, and the live inference application.
 CLASSES = {
     0: "road", 1: "sidewalk", 2: "building", 3: "wall", 4: "fence",
     5: "pole", 6: "traffic light", 7: "traffic sign", 8: "vegetation",
@@ -35,6 +42,8 @@ COLOR_MAPPING = {
     "others": "#E5ACB6"
 }
 
+# The colormap stays aligned with the numeric class IDs so mask visualization
+# remains consistent anywhere these constants are reused.
 COLORS = [to_rgb(COLOR_MAPPING[CLASSES[i]]) for i in sorted(CLASSES)]
 CONFIG_CMAP = ListedColormap(COLORS)
 
@@ -50,13 +59,8 @@ TEST_TF = A.Compose([
     ToTensorV2()
 ])
 
-# ── Functions ──────────────────────────────────────────────────────────────────
-
 def load_model_from_url(url: str = WEIGHT_URL) -> torch.nn.Module:
-    """
-    Stream pretrained weights directly from Google Drive into memory
-    (no file written to disk) and return a ready-to-use model.
-    """
+    """Download a pretrained U-Net checkpoint and return an evaluation model."""
     print("Downloading weights from Google Drive ...")
     buffer = io.BytesIO()
     gdown.download(url, buffer, quiet=False, fuzzy=True)
@@ -72,10 +76,13 @@ def load_model_from_url(url: str = WEIGHT_URL) -> torch.nn.Module:
 
 
 def segmentation_prediction(model, img_path: str) -> torch.Tensor:
+    """Run the baseline single-image prediction path used by local utilities."""
     model.eval()
     with torch.no_grad():
         img_path = os.path.abspath(img_path)
         image = cv2.imread(img_path)
+        # The training and inference pipeline expects normalized RGB input at
+        # the fixed model resolution.
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         transformed = TEST_TF(image=image)
         tensor = transformed["image"].unsqueeze(0).to(DEVICE)  # (1, C, H, W)
@@ -85,10 +92,13 @@ def segmentation_prediction(model, img_path: str) -> torch.Tensor:
 
 
 def countObject(pred_mask, class_ids: list = [13], min_area: int = 50):
+    """Approximate object counts by connected components in one class mask."""
 
     count, labeled_mask = 0, None
     lines = []
     for class_id in class_ids:
+        # Each connected component is treated as one approximate object region
+        # after small blobs below the minimum area threshold are discarded.
         mask = (pred_mask.squeeze(0).cpu().numpy() == class_id).astype(np.uint8)
         labeled_mask, num_objects = ndimage.label(mask)
         count = 0
@@ -101,15 +111,15 @@ def countObject(pred_mask, class_ids: list = [13], min_area: int = 50):
     return count, labeled_mask, lines
 
 def run(img_path: str):
-
-    # 1. Load model directly from Google Drive (no local file needed)
+    """Execute the standalone local inference flow on one image path."""
+    # Load the pretrained model checkpoint into memory.
     model = load_model_from_url()
 
-    # 2. Predict segmentation mask
+    # Predict the semantic segmentation mask.
     pred_mask = segmentation_prediction(model, img_path)  # (1, H, W)
     print(f"Prediction shape: {pred_mask.shape}")
 
-    # 3. Count objects
+    # Derive connected-component counts for the selected review classes.
     count, labeled_mask, lines = countObject(pred_mask, class_ids=[11, 13], min_area=25)
 
     return pred_mask, count, labeled_mask, lines

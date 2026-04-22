@@ -1,3 +1,5 @@
+"""Evaluation metrics used during training and held-out testing."""
+
 import torch
 
 
@@ -8,6 +10,7 @@ def pixel_accuracy(outputs: torch.Tensor, masks: torch.Tensor) -> float:
         outputs: (B, C, H, W) raw logits
         masks:   (B, H, W)    integer class labels
     """
+    # Semantic predictions are taken from the maximum-logit class at each pixel.
     preds = torch.argmax(outputs, dim=1)
     return (preds == masks).sum().item() / masks.numel()
 
@@ -39,6 +42,8 @@ def iou_score(
     gt_counts   = []
     cls_ious    = {}   # {class_id: iou} for classes present in this batch
     for cls in range(num_classes):
+        # Intersection and union are computed directly from binary masks for one
+        # class at a time so absent classes do not distort the metric.
         pred_inds   = preds == cls
         target_inds = masks == cls
         intersection = (pred_inds & target_inds).sum().item()
@@ -57,6 +62,8 @@ def iou_score(
 
     total_gt = sum(gt_counts)
     if total_gt > 0:
+        # Frequency weighting emphasizes classes that occupy more ground-truth
+        # pixels in the current batch.
         fw_iou = sum(iou * cnt for iou, cnt in zip(ious, gt_counts)) / total_gt
     else:
         fw_iou = mean_iou
@@ -75,6 +82,8 @@ def dice_score(outputs: torch.Tensor, masks: torch.Tensor, num_classes: int = 20
     preds = torch.argmax(outputs, dim=1)
     scores = []
     for cls in range(num_classes):
+        # Dice is computed only for classes that appear in either prediction or
+        # target for the current batch.
         pred_inds   = preds == cls
         target_inds = masks == cls
         intersection = (pred_inds & target_inds).sum().item()
