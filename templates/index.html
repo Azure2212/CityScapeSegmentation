@@ -187,37 +187,118 @@
       color: white;
     }
 
-    .compare-list {
+    .model-list {
       display: grid;
-      gap: 8px;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 12px;
     }
 
-    .compare-item {
+    .model-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 10px;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      overflow: hidden;
+      min-height: 38px;
       border: 1px solid #d7ebf8;
       background: #f7fbff;
     }
 
-    .compare-item input[type="checkbox"] {
+    .model-item:hover {
+      background: #eaf5fd;
+    }
+
+    .model-item input[type="checkbox"] {
       width: 16px;
       height: 16px;
       accent-color: #07a86a;
       flex-shrink: 0;
     }
 
-    .compare-item label {
-      font-size: 0.84rem;
+    .model-item label {
+      font-size: 0.85rem;
       color: #1a3a5c;
       cursor: pointer;
-      line-height: 1.4;
+      user-select: none;
+      line-height: 1.35;
+      flex: 1;
     }
 
-    .compare-item.is-disabled {
+    .model-item.is-selected {
+      box-shadow: 0 8px 18px rgba(26, 111, 168, 0.08);
+    }
+
+    .model-item.is-primary {
+      background: linear-gradient(90deg, rgba(7, 168, 106, 0.14), rgba(29, 214, 142, 0.08));
+      border-color: rgba(7, 168, 106, 0.4);
+      box-shadow: 0 10px 22px rgba(7, 168, 106, 0.12);
+    }
+
+    .model-item.is-primary label {
+      color: #0c6d46;
+      font-weight: 700;
+    }
+
+    .model-item.is-secondary {
+      background: linear-gradient(90deg, rgba(13, 143, 212, 0.14), rgba(34, 193, 232, 0.08));
+      border-color: rgba(13, 143, 212, 0.35);
+      box-shadow: 0 10px 22px rgba(13, 143, 212, 0.1);
+    }
+
+    .model-item.is-secondary label {
+      color: #14527c;
+      font-weight: 600;
+    }
+
+    .model-order {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      color: transparent;
+      background: transparent;
+      border: 1px solid transparent;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 0.15s, transform 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .model-item.is-selected .model-order {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .model-item.is-primary .model-order {
+      color: white;
+      background: linear-gradient(90deg, #07a86a, #1dd68e);
+      border-color: rgba(7, 168, 106, 0.35);
+    }
+
+    .model-item.is-secondary .model-order {
+      color: white;
+      background: linear-gradient(90deg, #0d8fd4, #22c1e8);
+      border-color: rgba(13, 143, 212, 0.3);
+    }
+
+    .model-item.is-disabled {
       opacity: 0.58;
+    }
+
+    .model-help {
+      margin-top: 10px;
+      font-size: 0.76rem;
+      color: #5a8aaa;
+      line-height: 1.45;
     }
 
     /* Upload controls, preview canvas, and reasoning panel */
@@ -961,6 +1042,7 @@
       }
 
       .class-list,
+      .model-list,
       .analysis-grid.four {
         grid-template-columns: 1fr;
       }
@@ -975,9 +1057,9 @@
   </header>
 
   <main>
-    <!-- Sidebar controls define the overlay classes and optional comparison models. -->
+    <!-- Sidebar controls define the overlay classes and model-selection state. -->
     <aside class="panel-classes">
-      <h2>Classes</h2>
+      <h2>Controls</h2>
 
       <section class="sidebar-section">
         <div class="btn-row" style="margin-top:0;padding-top:0;border-top:none;">
@@ -1002,25 +1084,28 @@
 
       <section class="sidebar-section">
         <div class="sidebar-title">
-          <h3>Model Comparison</h3>
-          <span class="sidebar-note">Optional</span>
+          <h3>Models</h3>
+          <span class="sidebar-note">Select 1+</span>
         </div>
-        <p class="sidebar-copy">Run additional pretrained models on the same image and compare the planning signals below the original segmentation workspace.</p>
-        <div class="compare-list">
-          {% for model in comparison_models %}
-          <div class="compare-item {% if not model.available %}is-disabled{% endif %}">
+        <p class="sidebar-copy">Choose one model to run, or multiple models to compare on the same image. The first model you select is the primary visualization model for the overlay and reasoning panels.</p>
+        <div class="model-list">
+          {% for model in models %}
+          <div class="model-item {% if not model.available %}is-disabled{% endif %}" data-model-key="{{ model.key }}">
             <input
               type="checkbox"
-              id="compare-{{ model.key }}"
+              id="model-{{ model.key }}"
               value="{{ model.key }}"
+              {% if model.key in default_selected_models %}checked{% endif %}
               {% if not model.available %}disabled{% endif %}
             />
-            <label for="compare-{{ model.key }}">
+            <label for="model-{{ model.key }}">
               {{ model.label }}{% if not model.available %} (unavailable){% endif %}
             </label>
+            <span class="model-order" aria-hidden="true"></span>
           </div>
           {% endfor %}
         </div>
+        <p id="modelHelp" class="model-help">Green 1 is the primary visualization model. Blue 2+ entries are comparison models and renumber automatically when a selection is removed.</p>
       </section>
     </aside>
 
@@ -1034,13 +1119,6 @@
         </label>
         <input type="file" id="imageInput" accept="image/*" onchange="handleUpload(event)" />
         <span id="fileName">No file chosen</span>
-        <select id="modelSelect" style="padding:9px 12px;border:1.5px solid #d0eaf8;border-radius:9px;font-size:0.88rem;color:#1a3a5c;background:white;cursor:pointer;outline:none;">
-          {% for model in models %}
-          <option value="{{ model.key }}" {% if not model.available %}disabled{% endif %}>
-            {{ model.label }}{% if not model.available %} (unavailable){% endif %}
-          </option>
-          {% endfor %}
-        </select>
         <button class="btn-run" type="button" onclick="runSegmentation()">Run Segmentation</button>
       </div>
 
@@ -1141,7 +1219,7 @@
           <section class="analysis-column">
             <h3 class="analysis-section-title">Model Comparison</h3>
             <div id="comparisonPanel" class="comparison-panel">
-              <p class="empty-copy">Select comparison models to render cross-model agreement and disagreement.</p>
+              <p class="empty-copy">Select multiple models to render cross-model agreement and disagreement.</p>
             </div>
           </section>
         </div>
@@ -1216,7 +1294,6 @@
     const placeholder = document.getElementById("placeholder");
     const loadingOverlay = document.getElementById("loadingOverlay");
     const statusText = document.getElementById("statusText");
-    const modelSelect = document.getElementById("modelSelect");
     const reasoningText = document.getElementById("reasoningText");
     const summaryText = document.getElementById("summaryText");
     const scoreGrid = document.getElementById("scoreGrid");
@@ -1226,21 +1303,95 @@
     const relationList = document.getElementById("relationList");
     const tagList = document.getElementById("tagList");
     const comparisonPanel = document.getElementById("comparisonPanel");
+    const modelHelp = document.getElementById("modelHelp");
     const groupBars = document.getElementById("groupBars");
     const objectRows = document.getElementById("objectRows");
     const regionCards = document.getElementById("regionCards");
     const classStats = document.getElementById("classStats");
 
     let uploadedFile = null;
+    let modelSelectionOrder = [];
 
-    // Read the current overlay-class and comparison-model selections from the
+    // Read the current overlay-class and model selections from the
     // sidebar controls before building the request payload.
     function overlayCheckboxes() {
       return [...document.querySelectorAll(".class-list input[type='checkbox']")];
     }
 
-    function comparisonCheckboxes() {
-      return [...document.querySelectorAll(".compare-list input[type='checkbox']")];
+    function modelCheckboxes() {
+      return [...document.querySelectorAll(".model-list input[type='checkbox']")];
+    }
+
+    function checkedModelCheckboxes() {
+      return modelCheckboxes().filter((checkbox) => checkbox.checked);
+    }
+
+    function selectedModelOrder() {
+      const checkedValues = new Set(checkedModelCheckboxes().map((checkbox) => checkbox.value));
+
+      modelSelectionOrder = modelSelectionOrder.filter((modelKey) => checkedValues.has(modelKey));
+
+      checkedModelCheckboxes().forEach((checkbox) => {
+        if (!modelSelectionOrder.includes(checkbox.value)) {
+          modelSelectionOrder.push(checkbox.value);
+        }
+      });
+
+      return [...modelSelectionOrder];
+    }
+
+    function syncModelPicker() {
+      const orderedModels = selectedModelOrder();
+      const primaryModel = orderedModels[0] || null;
+
+      modelCheckboxes().forEach((checkbox) => {
+        const item = checkbox.closest(".model-item");
+        const badge = item.querySelector(".model-order");
+        const label = item.querySelector(`label[for="${checkbox.id}"]`)?.textContent?.trim() || checkbox.value;
+        const order = orderedModels.indexOf(checkbox.value);
+        const selectionIndex = order + 1;
+
+        item.classList.remove("is-selected", "is-primary", "is-secondary");
+        item.removeAttribute("data-selection-order");
+        item.removeAttribute("title");
+        badge.textContent = "";
+
+        if (order === -1) {
+          return;
+        }
+
+        item.classList.add("is-selected");
+        item.classList.add(selectionIndex === 1 ? "is-primary" : "is-secondary");
+        item.dataset.selectionOrder = String(selectionIndex);
+        badge.textContent = String(selectionIndex);
+        item.title = selectionIndex === 1
+          ? `${label} is the primary visualization model.`
+          : `${label} runs as comparison model ${selectionIndex}.`;
+      });
+
+      if (!primaryModel) {
+        modelHelp.textContent = "Select at least one model. Green 1 becomes the primary visualization model and blue 2+ entries become comparison models.";
+        return;
+      }
+
+      const primaryLabel = document.querySelector(`label[for="model-${primaryModel}"]`)?.textContent?.trim() || primaryModel;
+      const comparisonCount = Math.max(orderedModels.length - 1, 0);
+      modelHelp.textContent = comparisonCount
+        ? `${primaryLabel} is the current primary visualization model. ${comparisonCount} additional model${comparisonCount === 1 ? "" : "s"} will run in comparison mode.`
+        : `${primaryLabel} is the current primary visualization model. Select more models to compare against it.`;
+    }
+
+    function handleModelSelectionChange(event) {
+      const checkbox = event.target;
+
+      if (checkbox.checked) {
+        modelSelectionOrder = modelSelectionOrder.filter((modelKey) => modelKey !== checkbox.value);
+        modelSelectionOrder.push(checkbox.value);
+      } else {
+        modelSelectionOrder = modelSelectionOrder.filter((modelKey) => modelKey !== checkbox.value);
+      }
+
+      syncModelPicker();
     }
 
     function setStatus(message, isError = false) {
@@ -1277,7 +1428,7 @@
       sceneProfile.innerHTML = emptyCopy("Scene layout information will appear here.");
       relationList.innerHTML = emptyCopy("Street-relation heuristics will appear here.");
       tagList.innerHTML = emptyCopy("Scene tags will appear here.");
-      comparisonPanel.innerHTML = emptyCopy("Select comparison models to render cross-model agreement and disagreement.");
+      comparisonPanel.innerHTML = emptyCopy("Select multiple models to render cross-model agreement and disagreement.");
       groupBars.innerHTML = emptyCopy("Planning groups will appear here.");
       objectRows.innerHTML = `
         <tr>
@@ -1597,7 +1748,7 @@
 
     function renderModelComparison(comparison) {
       if (!comparison) {
-        comparisonPanel.innerHTML = emptyCopy("Select comparison models to render cross-model agreement and disagreement.");
+        comparisonPanel.innerHTML = emptyCopy("Select multiple models to render cross-model agreement and disagreement.");
         return;
       }
 
@@ -1672,10 +1823,17 @@
     }
 
     async function runSegmentation() {
-      // Serialize the uploaded image, the chosen primary model, the overlay
-      // class selection, and any optional comparison-model requests.
+      // Serialize the uploaded image, the selected models, and the overlay
+      // class selection into one request.
       if (!uploadedFile) {
         setStatus("Please upload an image first.", true);
+        return;
+      }
+
+      const selectedModels = selectedModelOrder();
+
+      if (!selectedModels.length) {
+        setStatus("Select at least one model before running segmentation.", true);
         return;
       }
 
@@ -1683,21 +1841,15 @@
         .filter((checkbox) => checkbox.checked)
         .map((checkbox) => checkbox.value);
 
-      const compareModels = comparisonCheckboxes()
-        .filter((checkbox) => checkbox.checked)
-        .map((checkbox) => checkbox.value);
-
       const form = new FormData();
       form.append("image", uploadedFile);
-      form.append("model", modelSelect.value);
+      selectedModels.forEach((modelKey) => form.append("models[]", modelKey));
 
       if (selectedClasses.length) {
         selectedClasses.forEach((classId) => form.append("classes[]", classId));
       } else {
         form.append("classes[]", "-1");
       }
-
-      compareModels.forEach((modelKey) => form.append("compare_models[]", modelKey));
 
       loadingOverlay.style.display = "flex";
       setStatus("Running segmentation and planning analysis...");
@@ -1718,7 +1870,12 @@
         placeholder.style.display = "none";
 
         renderResults(data);
-        setStatus(`Analyzed with ${data.model_label}.`);
+        const comparedCount = data.model_comparison?.models?.length || 1;
+        setStatus(
+          comparedCount > 1
+            ? `Analyzed with ${data.model_label}. Compared ${comparedCount} models.`
+            : `Analyzed with ${data.model_label}.`
+        );
       } catch (error) {
         reasoningText.value = `Error: ${error.message}`;
         resetAnalysisPanels();
@@ -1728,7 +1885,12 @@
       }
     }
 
+    modelCheckboxes().forEach((checkbox) => {
+      checkbox.addEventListener("change", handleModelSelectionChange);
+    });
+
     // Initialize the dashboard before the first upload.
+    syncModelPicker();
     resetAnalysisPanels();
   </script>
 
