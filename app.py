@@ -29,11 +29,12 @@ from albumentations.pytorch import ToTensorV2
 
 app = Flask(__name__)
 
-# These models appear in the optional comparison panel on the root page.
-COMPARISON_MODEL_KEYS = ("UNet", "DeepLabV3", "LightSeg", "SwinV2B")
 # The root page starts with a practical subset of classes enabled for the
 # overlay so the first run highlights the dominant street-scene categories.
 DEFAULT_SELECTED_CLASSES = (0, 1, 2, 8, 10, 11, 13)
+# The root page starts with one primary model selected so the unified checkbox
+# list can drive either a single-model run or a multi-model comparison.
+DEFAULT_SELECTED_MODELS = ("UNet",)
 
 # The model registry is the single source of truth for labels shown in the UI,
 # checkpoint download URLs, loader functions, and input resolution.
@@ -251,6 +252,17 @@ def _comparison_models(base_model: str, requested_models: list[str]) -> tuple[li
     return selected, skipped
 
 
+def _requested_model_selection() -> tuple[str, list[str]]:
+    """Resolve the primary model and any comparison models from the request."""
+    selected_models = list(dict.fromkeys(request.form.getlist("models[]")))
+    if selected_models:
+        return selected_models[0], selected_models[1:]
+
+    model_key = request.form.get("model", DEFAULT_SELECTED_MODELS[0])
+    compare_models = list(dict.fromkeys(request.form.getlist("compare_models[]")))
+    return model_key, compare_models
+
+
 def _build_reasoning(
     mask_full: np.ndarray,
     selected_classes: set[int],
@@ -292,17 +304,12 @@ def index():
     # the available-model UI stays synchronized with the API.
     models = [{"key": k, "label": v["label"], "available": bool(v["url"])}
               for k, v in MODEL_REGISTRY.items()]
-    comparison_models = [
-        {"key": key, "label": MODEL_REGISTRY[key]["label"], "available": bool(MODEL_REGISTRY[key]["url"])}
-        for key in COMPARISON_MODEL_KEYS
-        if key in MODEL_REGISTRY
-    ]
     return render_template(
         "index.html",
         models=models,
         classes=CLASSES,
-        comparison_models=comparison_models,
         default_checked_classes=DEFAULT_SELECTED_CLASSES,
+        default_selected_models=DEFAULT_SELECTED_MODELS,
     )
 
 
@@ -314,10 +321,11 @@ def predict():
 
     file = request.files["image"]
     # The selected model drives inference, the class list drives only overlay
-    # coloring, and comparison models request extra analyses on the same image.
-    model_key = request.form.get("model", "UNet")
+    # coloring, and any additional selected models request extra analyses on
+    # the same image. The checkbox-based UI sends models[] while older clients
+    # can still send model + compare_models[].
+    model_key, compare_models = _requested_model_selection()
     selected_classes = request.form.getlist("classes[]", type=int)
-    compare_models = request.form.getlist("compare_models[]")
 
     # Decode the uploaded image into OpenCV BGR format so the same image buffer
     # can be reused for overlay rendering and model preprocessing.
@@ -399,5 +407,5 @@ def predict():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10796))
     app.run(host="0.0.0.0", port=port)
